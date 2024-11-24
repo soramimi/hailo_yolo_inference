@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #endif
 
+#define LABEL_FILE ("labels.txt")
 
 //#define HEF_FILE ("model_3x640x640.hef")
 #define HEF_FILE ("yolov9c.hef")
@@ -58,9 +59,36 @@ static std::shared_ptr<uint8_t> page_aligned_alloc(size_t size)
 #endif
 }
 
-int inference(uint8_t const *input_image, std::vector<BBox> *bboxes)
+int inference(uint8_t const *input_image, InferenceResult *result)
 {
-	bboxes->clear();
+	*result = {};
+
+	{
+		FILE *fp = fopen(LABEL_FILE, "r");
+		if (fp) {
+			char *line;
+			while (1) {
+				line = nullptr;
+				size_t n = 0;
+				int r = getline(&line, &n, fp);
+				std::string s;
+				if (line) {
+					while (r > 0 && isspace((unsigned char)line[r - 1])) {
+						r--;
+					}
+					if (r > 0) {
+						s.assign(line, r);
+					}
+					free(line);
+				}
+				if (r < 0) break;
+				result->labels.push_back(s);
+			}
+			fclose(fp);
+		}
+	}
+
+
 	try {
 		Expected<std::unique_ptr<VDevice>> vdevice = VDevice::create();
 		if (!vdevice) {
@@ -160,16 +188,16 @@ int inference(uint8_t const *input_image, std::vector<BBox> *bboxes)
 				uint8_t const *idata = in->data();
 				uint8_t const *odata = out->data();
 
-				Expected<hailo_nms_shape_t> result = model->output()->get_nms_shape();
+				Expected<hailo_nms_shape_t> nms_shape = model->output()->get_nms_shape();
 
 				size_t isize = in->size();
 				Q_ASSERT(isize == 640 * 640 * 3);
 
 				size_t osize = out->size();
-				Q_ASSERT(osize == (sizeof(float) + sizeof(hailo_bbox_float32_t) * result->max_bboxes_per_class) * result->number_of_classes);
+				Q_ASSERT(osize == (sizeof(float) + sizeof(hailo_bbox_float32_t) * nms_shape->max_bboxes_per_class) * nms_shape->number_of_classes);
 
 				uint8_t const *ptr = odata;
-				int ncls = result->number_of_classes;
+				int ncls = nms_shape->number_of_classes;
 				for (int cls = 0; cls < ncls; cls++) {
 					int nbox = *(float const *)ptr;
 					ptr += sizeof(float);
@@ -182,7 +210,7 @@ int inference(uint8_t const *input_image, std::vector<BBox> *bboxes)
 						bb.w = bbox->x_max - bbox->x_min;
 						bb.h = bbox->y_max - bbox->y_min;
 						bb.score = bbox->score;
-						bboxes->push_back(bb);
+						result->bboxes.push_back(bb);
 						bbox++;
 					}
 					ptr += sizeof(hailo_bbox_float32_t) * nbox;

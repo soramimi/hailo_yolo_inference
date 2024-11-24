@@ -26,15 +26,13 @@ void MainWindow::on_action_file_open_triggered()
 		// set image
 		QImage image;
 		image.load(path);
-		image = image.scaled(640, 640, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-		image = image.convertToFormat(QImage::Format_RGB888);
 		ui->centralwidget->setImage(image);
 		// inference
-		std::vector<BBox> bboxes;
+		InferenceResult result;
 		std::vector<uint8_t> vec;
 		ui->centralwidget->quantize(&vec);
-		inference(vec.data(), &bboxes);
-		ui->centralwidget->setBoundingBoxes(std::move(bboxes));
+		inference(vec.data(), &result);
+		ui->centralwidget->setInferenceResult(result);
 	}
 }
 

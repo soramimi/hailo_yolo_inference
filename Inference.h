@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <vector>
+#include <string>
 
 struct BBox {
 	int cls;
@@ -13,6 +14,12 @@ struct BBox {
 	float score;
 };
 
-int inference(uint8_t const *input, std::vector<BBox> *bboxes);
+class InferenceResult {
+public:
+	std::vector<std::string> labels;
+	std::vector<BBox> bboxes;
+};
+
+int inference(uint8_t const *input, InferenceResult *result);
 
 #endif // INFERENCE_H

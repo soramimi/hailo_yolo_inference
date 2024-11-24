@@ -10,23 +10,14 @@ class ImageView : public QWidget {
 
 private:
 	QImage image_;
-	std::vector<BBox> bboxes_;
+	InferenceResult result_;
 protected:
 	void paintEvent(QPaintEvent *event);
 public:
 	explicit ImageView(QWidget *parent = nullptr);
-	void setImage(QImage const &img)
-	{
-		image_ = img;
-		bboxes_ = {};
-		update();
-	}
+	void setImage(QImage const &img);
 	bool quantize(std::vector<uint8_t> *out);
-	void setBoundingBoxes(std::vector<BBox> &&bb)
-	{
-		bboxes_ = std::move(bb);
-		update();
-	}
+	void setInferenceResult(InferenceResult const &result);
 signals:
 
 
