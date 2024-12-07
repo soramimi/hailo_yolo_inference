@@ -10,10 +10,8 @@
 #endif
 
 #define LABEL_FILE ("labels.txt")
-
-//#define HEF_FILE ("model_3x640x640.hef")
-#define HEF_FILE ("yolov9c.hef")
-//#define HEF_FILE ("/home/soramimi/hailo-rpi5-examples/resources/yolov8s_h8l.hef")
+#define HEF_FILE ("yolov8s_h8l.hef")
+//#define HEF_FILE ("yolov9c.hef")
 
 using namespace hailort;
 
@@ -46,17 +44,9 @@ static inline float32_t dequant(hailo_quant_info_t const &qinfo, int x)
 
 static std::shared_ptr<uint8_t> page_aligned_alloc(size_t size)
 {
-#if defined(__unix__)
 	void *addr = mmap(NULL, size, PROT_WRITE | PROT_READ, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
 	if (MAP_FAILED == addr) throw std::bad_alloc();
 	return std::shared_ptr<uint8_t>(reinterpret_cast<uint8_t*>(addr), [size](void *addr) { munmap(addr, size); });
-#elif defined(_MSC_VER)
-	void *addr = VirtualAlloc(NULL, size, MEM_COMMIT | MEM_RESERVE, PAGE_READWRITE);
-	if (!addr) throw std::bad_alloc();
-	return std::shared_ptr<uint8_t>(reinterpret_cast<uint8_t*>(addr), [](void *addr){ VirtualFree(addr, 0, MEM_RELEASE); });
-#else
-#pragma error("Aligned alloc not supported")
-#endif
 }
 
 int inference(uint8_t const *input_image, InferenceResult *result)
@@ -171,15 +161,6 @@ int inference(uint8_t const *input_image, InferenceResult *result)
 		if (HAILO_SUCCESS != status) {
 			throw hailort_error(status, "Failed to wait for infer to finish");
 		}
-
-#if 0
-		std::vector<hailo_quant_info_t> iqinfo = model->input()->get_quant_infos();
-		std::vector<hailo_quant_info_t> oqinfo = model->output()->get_quant_infos();
-		int y1 = quant(iqinfo[0], 0.3333);
-		float y2 = dequant(iqinfo[0], 0xaa);
-
-		hailo_3d_image_shape_t shape = model->output()->shape();
-#endif
 
 		{
 			Expected<MemoryView> in = bindings->input()->get_buffer();

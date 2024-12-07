@@ -1,3 +1,4 @@
 *.user
 *.log
 *.hef
+hailo_yolo_inference
